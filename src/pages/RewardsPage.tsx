@@ -67,13 +67,41 @@ export function RewardsPage() {
 
   async function handleDeactivate(reward: RewardRow) {
     setError(null)
-    const { error: err } = await supabase
+    const { data: deletedRow, error: deleteErr } = await supabase
+      .from('reward_catalog')
+      .delete()
+      .eq('id', reward.id)
+      .select('id')
+      .maybeSingle()
+
+    if (!deleteErr && deletedRow) {
+      fetchRewards()
+      return
+    }
+
+    const shouldFallbackToDeactivate =
+      deleteErr?.code === '23503' ||
+      /foreign key|constraint/i.test(deleteErr?.message || '')
+
+    if (!shouldFallbackToDeactivate && deleteErr) {
+      setError(`Failed to delete reward: ${deleteErr.message}`)
+      return
+    }
+
+    const { data: updatedRow, error: updateErr } = await supabase
       .from('reward_catalog')
       .update({ is_active: false })
       .eq('id', reward.id)
+      .select('id')
+      .maybeSingle()
 
-    if (err) {
-      setError(`Failed to deactivate reward: ${err.message}`)
+    if (updateErr) {
+      setError(`Failed to deactivate reward: ${updateErr.message}`)
+      return
+    }
+
+    if (!updatedRow) {
+      setError('No reward was changed. You may not have permission to modify this row.')
       return
     }
 
