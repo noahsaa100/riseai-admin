@@ -66,7 +66,17 @@ export function RewardsPage() {
   ]
 
   async function handleDeactivate(reward: RewardRow) {
-    await supabase.from('reward_catalog').update({ is_active: false }).eq('id', reward.id)
+    setError(null)
+    const { error: err } = await supabase
+      .from('reward_catalog')
+      .update({ is_active: false })
+      .eq('id', reward.id)
+
+    if (err) {
+      setError(`Failed to deactivate reward: ${err.message}`)
+      return
+    }
+
     fetchRewards()
   }
 
